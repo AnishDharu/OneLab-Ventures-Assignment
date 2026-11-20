@@ -192,10 +192,11 @@ st.markdown("""
 .sb-title { font-size: 1rem; font-weight: 800; color: #e2e8f0; margin-bottom: 1rem; }
 .sb-hint  { font-size: .75rem; color: #475569; line-height: 1.5; }
 
-/* ── Hide default header cruft ── */
+/* ── Hide default header cruft but keep sidebar toggle visible ── */
 #MainMenu { visibility: hidden; }
 footer    { visibility: hidden; }
-header    { visibility: hidden; }
+header [data-testid="stToolbar"] { visibility: visible; }
+[data-testid="collapsedControl"] { display: block !important; visibility: visible !important; color: #818cf8 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -312,33 +313,12 @@ st.markdown("""
 
 # ── Landing state ─────────────────────────────────────────────────────────────
 if "result" not in st.session_state:
-    # Show three feature cards before any run
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("""
-<div class="kpi-card teal" style="padding:1.3rem 1.4rem; height:160px;">
-  <div style="font-size:1.6rem;margin-bottom:.5rem">🔍</div>
-  <div style="font-weight:700;color:#e2e8f0;margin-bottom:.3rem">Gap Detection</div>
-  <div style="font-size:.82rem;color:#64748b">Automatically classify every mismatch into one of four gap categories with confidence scores.</div>
-</div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown("""
-<div class="kpi-card purple" style="padding:1.3rem 1.4rem; height:160px;">
-  <div style="font-size:1.6rem;margin-bottom:.5rem">📐</div>
-  <div style="font-weight:700;color:#e2e8f0;margin-bottom:.3rem">Accounting Equation</div>
-  <div style="font-size:.82rem;color:#64748b">Platform − Bank = Σ gaps + unexplained. Target: unexplained = $0.00.</div>
-</div>""", unsafe_allow_html=True)
-    with c3:
-        st.markdown("""
-<div class="kpi-card blue" style="padding:1.3rem 1.4rem; height:160px;">
-  <div style="font-size:1.6rem;margin-bottom:.5rem">🎯</div>
-  <div style="font-weight:700;color:#e2e8f0;margin-bottom:.3rem">Ground Truth Recall</div>
-  <div style="font-size:.82rem;color:#64748b">Compare detected gaps against planted ground truth — visualise recall per gap type.</div>
-</div>""", unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.info("👈  Click **Run Reconciliation** in the sidebar to load the synthetic dataset and start.")
-    st.stop()
+    # Auto-load default dataset so user sees the dashboard immediately!
+    txn_df, stl_df = _load_default()
+    st.session_state["result"], st.session_state["recall"] = _run(txn_df, stl_df)
+    st.session_state["txn_df"] = txn_df
+    st.session_state["stl_df"] = stl_df
+    st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
