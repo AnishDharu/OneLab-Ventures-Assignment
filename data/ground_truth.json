@@ -1,0 +1,92 @@
+{
+  "gaps": [
+    {
+      "type": "TIMING",
+      "affected_ids": [
+        "TXN01461",
+        "TXN01462",
+        "TXN01463",
+        "TXN01464"
+      ],
+      "amount_impact": "1438.97",
+      "description": "4 transactions from Oct 29-30 whose settlements land in November"
+    },
+    {
+      "type": "ROUNDING",
+      "affected_ids": [
+        "TXN01465",
+        "TXN01466",
+        "TXN01467",
+        "TXN01468",
+        "TXN01469",
+        "TXN01470",
+        "TXN01471",
+        "TXN01472",
+        "TXN01473",
+        "TXN01474",
+        "TXN01475",
+        "TXN01476",
+        "TXN01477",
+        "TXN01478",
+        "TXN01479",
+        "TXN01480",
+        "TXN01481",
+        "TXN01482",
+        "TXN01483",
+        "TXN01484",
+        "TXN01485",
+        "TXN01486",
+        "TXN01487",
+        "TXN01488",
+        "TXN01489",
+        "TXN01490",
+        "TXN01491",
+        "TXN01492",
+        "TXN01493",
+        "TXN01494",
+        "TXN01495",
+        "TXN01496",
+        "TXN01497",
+        "TXN01498",
+        "TXN01499",
+        "TXN01500",
+        "TXN01501",
+        "TXN01502",
+        "TXN01503",
+        "TXN01504"
+      ],
+      "amount_impact": "-0.200",
+      "description": "40 transactions where platform holds sub-cent amount, bank rounds; cumulative drift"
+    },
+    {
+      "type": "DUPLICATE",
+      "affected_ids": {
+        "duplicate_txn_id": "TXN01011",
+        "duplicate_settlement_id": "STL05021"
+      },
+      "amount_impact": "669.83",
+      "description": "1 transaction duplicated in transactions.csv; 1 settlement duplicated in settlements.csv"
+    },
+    {
+      "type": "ORPHAN_REFUND",
+      "affected_ids": [
+        {
+          "refund_txn_id": "TXN01505",
+          "missing_original_txn_id": "TXN99001"
+        },
+        {
+          "refund_txn_id": "TXN01506",
+          "missing_original_txn_id": "TXN99002"
+        }
+      ],
+      "amount_impact": "733.73",
+      "description": "2 refunds whose original_txn_id does not exist in transactions"
+    }
+  ],
+  "metadata": {
+    "month": "2026-10",
+    "total_transactions": 507,
+    "total_settlements": 503,
+    "clean_baseline_count": 460
+  }
+}

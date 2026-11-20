@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+data/transactions.csv
+data/settlements.csv
+data/ground_truth.csv
+*.egg-info/
+.pytest_cache/
+dist/
+build/

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Payments Reconciliation Tool</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d2e;
+    --surface2: #252842;
+    --border: #2e3155;
+    --accent: #6366f1;
+    --accent2: #22d3ee;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+  header h1 { font-size: 1.3rem; font-weight: 700; color: var(--accent2); }
+  header p  { font-size: 0.8rem; color: var(--muted); }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+  /* Assumption banner */
+  .assumptions { background: var(--surface2); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.8rem; color: var(--muted); }
+  .assumptions strong { color: var(--text); }
+
+  /* Actions bar */
+  .actions { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 0.55rem 1.1rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: opacity .2s; }
+  button:hover { opacity: 0.85; }
+  button.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .upload-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+  input[type=file] { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem; color: var(--muted); font-size: 0.8rem; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.3rem; }
+  .card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.4rem; }
+  .card .value { font-size: 1.5rem; font-weight: 700; }
+  .card .value.positive { color: var(--success); }
+  .card .value.negative { color: var(--danger); }
+  .card .value.warn { color: var(--warn); }
+  .card .value.neutral { color: var(--accent2); }
+
+  /* Equation */
+  .equation { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.3rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .equation span { color: var(--muted); }
+  .equation strong { color: var(--accent2); }
+  .equation .ok { color: var(--success); font-weight: 700; }
+  .equation .bad { color: var(--danger); font-weight: 700; }
+
+  /* Charts row */
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  @media (max-width: 800px) { .charts { grid-template-columns: 1fr; } }
+  .chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
+  .chart-box h2 { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; }
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* Recall panel */
+  .recall { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
+  .recall h2 { font-size: 0.95rem; margin-bottom: 0.8rem; color: var(--accent2); }
+  .recall-grid { display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.5rem 1rem; align-items: center; font-size: 0.82rem; }
+  .recall-grid .header { color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+  .badge.hit  { background: #166534; color: #86efac; }
+  .badge.miss { background: #7f1d1d; color: #fca5a5; }
+  .badge.fp   { background: #78350f; color: #fde68a; }
+
+  /* Gap table */
+  .gap-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
+  .gap-section h2 { font-size: 0.95rem; margin-bottom: 0.8rem; color: var(--accent2); }
+  .filter-row { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .filter-row input, .filter-row select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { text-align: left; color: var(--muted); padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); font-weight: 600; white-space: nowrap; }
+  td { padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .type-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
+  .type-TIMING       { background:#1e3a5f; color:#93c5fd; }
+  .type-ROUNDING     { background:#3b2f00; color:#fde68a; }
+  .type-DUPLICATE    { background:#2d1b4e; color:#c4b5fd; }
+  .type-ORPHAN_REFUND{ background:#3b1515; color:#fca5a5; }
+  .type-MISSING      { background:#2d2d2d; color:#9ca3af; }
+  .explanation { color: var(--muted); max-width: 420px; }
+  .conf { font-size: 0.75rem; color: var(--muted); }
+  .pager { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.8rem; font-size: 0.82rem; color: var(--muted); }
+
+  #status { font-size: 0.82rem; color: var(--warn); padding: 0.4rem 0; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ Payments Reconciliation Tool</h1>
+    <p>October 2026 · Synthetic data with four planted gap types</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Assumptions banner -->
+  <div class="assumptions">
+    <strong>Assumptions:</strong>
+    UTC timestamps · Single currency (USD) · 1–2 business day settlement lag · Rounding tolerance = \$0.01 ·
+    Business days = Mon–Fri (no holiday calendar) · Exact match by txn_id = txn_ref ·
+    Duplicates identified by exact key (txn_id / settlement_id)
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button onclick="runReconcile()">▶ Run Reconciliation</button>
+    <div class="upload-row">
+      <input type="file" id="txnFile" accept=".csv" placeholder="transactions.csv" />
+      <input type="file" id="stlFile" accept=".csv" placeholder="settlements.csv" />
+      <button class="secondary" onclick="uploadAndReconcile()">↑ Upload & Reconcile</button>
+    </div>
+    <span id="status"></span>
+  </div>
+
+  <!-- Headline cards -->
+  <div class="cards" id="cards">
+    <div class="card"><div class="label">Platform Total</div><div class="value neutral" id="card-platform">—</div></div>
+    <div class="card"><div class="label">Bank Total</div><div class="value neutral" id="card-bank">—</div></div>
+    <div class="card"><div class="label">Difference</div><div class="value" id="card-diff">—</div></div>
+    <div class="card"><div class="label">Total Gaps Found</div><div class="value" id="card-gaps">—</div></div>
+    <div class="card"><div class="label">Unexplained</div><div class="value" id="card-unexplained">—</div></div>
+  </div>
+
+  <!-- Accounting equation -->
+  <div class="equation" id="equation">
+    <span>Run a reconciliation to see the accounting equation.</span>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts">
+    <div class="chart-box">
+      <h2>Gap Breakdown by Type (Waterfall)</h2>
+      <div class="chart-wrap"><canvas id="waterfallChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h2>Transaction Match Status</h2>
+      <div class="chart-wrap"><canvas id="matchChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Recall panel -->
+  <div class="recall" id="recallPanel" style="display:none">
+    <h2>🎯 Recall vs Ground Truth — Were All Planted Gaps Caught?</h2>
+    <div class="recall-grid" id="recallGrid"></div>
+  </div>
+
+  <!-- Gap table -->
+  <div class="gap-section">
+    <h2>🔍 Gap Details</h2>
+    <div class="filter-row">
+      <input type="text" id="filterText" placeholder="Search IDs or explanations…" oninput="renderTable()" />
+      <select id="filterType" onchange="renderTable()">
+        <option value="">All types</option>
+        <option>TIMING</option>
+        <option>ROUNDING</option>
+        <option>DUPLICATE</option>
+        <option>ORPHAN_REFUND</option>
+        <option>MISSING</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th><th>IDs</th><th>Amount Impact</th><th>Explanation</th><th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody id="gapTbody"></tbody>
+    </table>
+    <div class="pager">
+      <button class="secondary" onclick="prevPage()">‹ Prev</button>
+      <span id="pageInfo"></span>
+      <button class="secondary" onclick="nextPage()">Next ›</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PAGE_SIZE = 20;
+let allGaps = [];
+let page = 0;
+let waterfallChart = null;
+let matchChart = null;
+
+function fmt(n) {
+  return parseFloat(n).toLocaleString('en-US', {style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:4});
+}
+
+function setStatus(msg, spin=false) {
+  document.getElementById('status').innerHTML = spin ? `<span class="spinner"></span>${msg}` : msg;
+}
+
+async function runReconcile() {
+  setStatus('Running reconciliation…', true);
+  try {
+    const r = await fetch('/reconcile', {method:'POST'});
+    if (!r.ok) throw new Error(await r.text());
+    await r.json();
+    await loadResults();
+    setStatus('✓ Done');
+  } catch(e) { setStatus('Error: ' + e.message); }
+}
+
+async function uploadAndReconcile() {
+  const txnF = document.getElementById('txnFile').files[0];
+  const stlF = document.getElementById('stlFile').files[0];
+  if (!txnF || !stlF) { setStatus('Select both files first.'); return; }
+  setStatus('Uploading…', true);
+  try {
+    const fd = new FormData();
+    fd.append('transactions_file', txnF);
+    fd.append('settlements_file', stlF);
+    const r = await fetch('/reconcile', {method:'POST', body:fd});
+    if (!r.ok) throw new Error(await r.text());
+    await r.json();
+    await loadResults();
+    setStatus('✓ Done');
+  } catch(e) { setStatus('Error: ' + e.message); }
+}
+
+async function loadResults() {
+  const r = await fetch('/results');
+  if (!r.ok) return;
+  const data = await r.json();
+  renderSummary(data.result);
+  allGaps = data.result.gaps || [];
+  page = 0;
+  renderTable();
+  if (data.recall && data.recall.rows) renderRecall(data.recall);
+}
+
+function renderSummary(res) {
+  const diff = parseFloat(res.difference);
+  const unexp = parseFloat(res.unexplained);
+
+  document.getElementById('card-platform').textContent = fmt(res.platform_total);
+  document.getElementById('card-bank').textContent = fmt(res.bank_total);
+  const diffEl = document.getElementById('card-diff');
+  diffEl.textContent = fmt(res.difference);
+  diffEl.className = 'value ' + (diff > 0 ? 'warn' : diff < 0 ? 'negative' : 'positive');
+  document.getElementById('card-gaps').textContent = res.gaps ? res.gaps.length : 0;
+  const unexpEl = document.getElementById('card-unexplained');
+  unexpEl.textContent = fmt(res.unexplained);
+  unexpEl.className = 'value ' + (Math.abs(unexp) < 0.001 ? 'positive ok' : 'negative');
+
+  // Equation
+  const gapParts = Object.entries(res.gap_by_type)
+    .map(([t,v]) => `${t}(${fmt(v)})`).join(' + ');
+  const eqEl = document.getElementById('equation');
+  const unexpClass = Math.abs(unexp) < 0.001 ? 'ok' : 'bad';
+  eqEl.innerHTML = `
+    <strong>Accounting Equation:</strong>&nbsp;
+    <strong style="color:var(--accent2)">${fmt(res.platform_total)}</strong>
+    <span> (platform) − </span>
+    <strong style="color:var(--accent2)">${fmt(res.bank_total)}</strong>
+    <span> (bank) = </span>
+    <strong style="color:var(--warn)">${fmt(res.difference)}</strong>
+    <span> = ${gapParts || '—'} + unexplained </span>
+    <span class="${unexpClass}">${fmt(res.unexplained)}</span>
+    ${Math.abs(unexp) < 0.001 ? '<span class="ok"> ✓ fully explained</span>' : '<span class="bad"> ✗ residual detected</span>'}
+  `;
+
+  renderWaterfall(res);
+  renderMatchPie(res.stats);
+}
+
+function renderWaterfall(res) {
+  const ctx = document.getElementById('waterfallChart').getContext('2d');
+  if (waterfallChart) waterfallChart.destroy();
+
+  const types = Object.keys(res.gap_by_type);
+  const values = types.map(t => parseFloat(res.gap_by_type[t]));
+  const colors = {
+    TIMING: '#3b82f6', ROUNDING: '#f59e0b',
+    DUPLICATE: '#8b5cf6', ORPHAN_REFUND: '#ef4444', MISSING: '#6b7280'
+  };
+
+  waterfallChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: types,
+      datasets: [{
+        label: 'Amount Impact (\$)',
+        data: values,
+        backgroundColor: types.map(t => colors[t] || '#6b7280'),
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3155' } },
+        y: { ticks: { color: '#94a3b8', callback: v => '$'+v.toFixed(2) }, grid: { color: '#2e3155' } }
+      }
+    }
+  });
+}
+
+function renderMatchPie(stats) {
+  const ctx = document.getElementById('matchChart').getContext('2d');
+  if (matchChart) matchChart.destroy();
+  if (!stats) return;
+
+  const matched = (stats.exact_matched || 0) + (stats.rounding_matched || 0);
+  const unmatched = stats.unmatched_transactions || 0;
+  const total = stats.total_transactions || 1;
+
+  matchChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Exact Match', 'Tolerance Match', 'Unmatched'],
+      datasets: [{
+        data: [stats.exact_matched || 0, stats.rounding_matched || 0, unmatched],
+        backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+        borderColor: '#1a1d2e', borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed} (${((ctx.parsed/total)*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+function renderRecall(recall) {
+  const panel = document.getElementById('recallPanel');
+  const grid  = document.getElementById('recallGrid');
+  panel.style.display = '';
+
+  const headers = ['Gap Type','Description','Amount Impact','Status'];
+  grid.innerHTML = headers.map(h => `<div class="header">${h}</div>`).join('');
+
+  for (const row of recall.rows) {
+    const isFP = row.planted_description.includes('NOT PLANTED');
+    const badge = isFP ? `<span class="badge fp">FALSE POS</span>`
+                : row.detected ? `<span class="badge hit">✓ CAUGHT (${row.detected_count})</span>`
+                               : `<span class="badge miss">✗ MISSED</span>`;
+    grid.innerHTML += `
+      <div><span class="type-badge type-${row.planted_type}">${row.planted_type}</span></div>
+      <div style="color:var(--muted);font-size:0.8rem">${row.planted_description}</div>
+      <div>${fmt(row.planted_amount_impact)}</div>
+      <div>${badge}</div>
+    `;
+  }
+
+  const pct = (recall.overall_recall * 100).toFixed(0);
+  grid.innerHTML += `
+    <div style="grid-column:1/-1;margin-top:0.6rem;font-size:0.82rem;color:var(--muted)">
+      Overall recall: <strong style="color:${pct>=100?'var(--success)':'var(--warn)'}">${pct}%</strong>
+    </div>
+  `;
+}
+
+function filteredGaps() {
+  const text = document.getElementById('filterText').value.toLowerCase();
+  const type = document.getElementById('filterType').value;
+  return allGaps.filter(g => {
+    if (type && g.type !== type) return false;
+    if (text) {
+      const hay = JSON.stringify(g).toLowerCase();
+      if (!hay.includes(text)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTable() {
+  const gaps = filteredGaps();
+  const start = page * PAGE_SIZE;
+  const slice = gaps.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('gapTbody');
+
+  if (!gaps.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">No gaps to display. Run a reconciliation first.</td></tr>';
+    document.getElementById('pageInfo').textContent = '';
+    return;
+  }
+
+  tbody.innerHTML = slice.map(g => {
+    const ids = typeof g.ids === 'object' ? Object.entries(g.ids).map(([k,v]) => `<span style="color:var(--muted)">${k}:</span> ${v}`).join('<br>') : g.ids;
+    const amt = parseFloat(g.amount_impact);
+    const amtClass = amt < 0 ? 'color:var(--danger)' : amt > 0 ? 'color:var(--warn)' : 'color:var(--muted)';
+    return `<tr>
+      <td><span class="type-badge type-${g.type}">${g.type}</span></td>
+      <td style="font-family:monospace;font-size:0.78rem">${ids}</td>
+      <td style="${amtClass};font-weight:700;white-space:nowrap">${fmt(g.amount_impact)}</td>
+      <td class="explanation">${g.explanation}</td>
+      <td class="conf">${(g.confidence*100).toFixed(0)}%</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pageInfo').textContent =
+    `${start+1}–${Math.min(start+PAGE_SIZE, gaps.length)} of ${gaps.length}`;
+}
+
+function prevPage() { if (page > 0) { page--; renderTable(); } }
+function nextPage() { const gaps = filteredGaps(); if ((page+1)*PAGE_SIZE < gaps.length) { page++; renderTable(); } }
+
+// Auto-load results on page open
+window.onload = () => loadResults().catch(() => {});
+</script>
+</body>
+</html>
